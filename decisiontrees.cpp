@@ -1,5 +1,8 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <vector>
+#include <queue>
 #include <cmath>
 #include <pthread.h>
 #include <atomic>
@@ -18,6 +21,7 @@ struct DecisionTreeNode {
 struct Point {
     vector<float> features;
     int label;
+    Point(vector<float> features, int label) : features{features}, label{label} {}
 };
 
 struct ThreadArgs {
@@ -154,31 +158,39 @@ int predict(const DecisionTreeNode* root, const Point& point) {
     }
 }
 
+// Hard coded to feature/label files for prostate cancer genome dataset
+void load_dataset(vector<Point>& data){
+    fstream fin;
+    queue<int> label_queue;
+    fin.open("prostate2.txt", ios::in);
+    int cur_label;
+    while(fin >> cur_label) {
+        label_queue.push(cur_label);
+    }
+    fin.close(); 
+    fin.open("prostate1.csv", ios::in);
+    string feature_name_line;
+    fin >> feature_name_line;
+    string feature_line;
+    while(fin >> feature_line) {
+        vector<float>feature_vec;
+        stringstream feature_ss(feature_line);
+        float iter;
+        while(feature_ss >> iter) {
+            feature_vec.push_back(iter);
+            if(feature_ss.peek() == ',') {
+                feature_ss.ignore();
+            }
+        }
+        data.push_back(Point(feature_vec, label_queue.front()));
+        label_queue.pop();
+    }
+}
+
 int main() {
     vector<Point> data;
-    data.push_back({{1.0, 2.0}, 0});
-    data.push_back({{2.0, 1.0}, 0});
-    data.push_back({{2.0, 3.0}, 0});
-    data.push_back({{3.0, 2.0}, 0});
-    data.push_back({{5.0, 3.0}, 1});
-    data.push_back({{6.0, 3.0}, 1});
-    data.push_back({{7.0, 1.0}, 1});
-    data.push_back({{8.0, 2.0}, 1});
-    DecisionTreeNode* root = sequentialBuildDecisionTree(data, 4);
-    cout << (predict(root, {{1.0, 2.0}, 0}) == 0) << endl;
-    cout << (predict(root, {{2.0, 1.0}, 0}) == 0) << endl;
-    cout << (predict(root, {{2.0, 3.0}, 0}) == 0) << endl;
-    cout << (predict(root, {{3.0, 2.0}, 0}) == 0) << endl;
-    cout << (predict(root, {{5.0, 3.0}, 1}) == 1) << endl;
-    cout << (predict(root, {{6.0, 3.0}, 1}) == 1) << endl;
-    cout << (predict(root, {{7.0, 1.0}, 1}) == 1) << endl;
-    cout << (predict(root, {{8.0, 2.0}, 1}) == 1) << endl;
-
-
-    // cout << root->featureIndex << endl;
-    // cout << root->threshold << endl;
-    // cout << root->label << endl << endl;
-    // cout << root->left << endl;
-    // cout << root->right << endl;
+    load_dataset(data);
+    DecisionTreeNode* root = sequentialBuildDecisionTree(data, 2);
+    //cout << (predict(root, data[0]) == 0) << endl;
     return 0;
 }
